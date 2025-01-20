@@ -908,7 +908,7 @@ class TestSemesterAssignView(WebTestStaffMode):
     @classmethod
     def setUpTestData(cls):
         cls.manager = make_manager()
-        cls.semester: Semester = baker.make(Semester)
+        cls.semester = baker.make(Semester)
         cls.url = f"/staff/semester/{cls.semester.pk}/assign"
 
         cls.lecture_type = baker.make(CourseType, name_de="Vorlesung", name_en="Lecture")
@@ -932,8 +932,8 @@ class TestSemesterAssignView(WebTestStaffMode):
     def test_assign_questionnaires(self) -> None:
         page = self.app.get(self.url, user=self.manager)
         assign_form = page.forms["questionnaire-assign-form"]
-        assign_form["general-Seminar"] = [self.questionnaire_general.pk]
-        assign_form["contributor-Lecture"] = [self.questionnaire_contributor.pk]
+        assign_form["general-" + str(self.seminar_type.id)] = [self.questionnaire_general.pk]
+        assign_form["contributor-" + str(self.lecture_type.id)] = [self.questionnaire_contributor.pk]
         page = assign_form.submit().follow()
 
         for evaluation in self.semester.evaluations.all():
@@ -3849,9 +3849,9 @@ class TestSemesterQuestionnaireAssignment(WebTestStaffMode):
     def test_questionnaire_assignment(self):
         page = self.app.get(self.url, user=self.manager, status=200)
         form = page.forms["questionnaire-assign-form"]
-        form["general-" + self.course_type_1.name] = [self.questionnaire_1.pk, self.questionnaire_2.pk]
-        form["general-" + self.course_type_2.name] = [self.questionnaire_2.pk]
-        form["contributor-" + self.course_type_1.name] = [self.questionnaire_responsible.pk]
+        form["general-" + str(self.course_type_1.id)] = [self.questionnaire_1.pk, self.questionnaire_2.pk]
+        form["general-" + str(self.course_type_2.id)] = [self.questionnaire_2.pk]
+        form["contributor-" + str(self.course_type_1.id)] = [self.questionnaire_responsible.pk]
 
         response = form.submit().follow()
         self.assertIn("Successfully", str(response))
