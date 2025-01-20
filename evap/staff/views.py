@@ -901,22 +901,20 @@ def semester_questionnaire_assign(request, semester_id):
         raise PermissionDenied
     evaluations = semester.evaluations.filter(state=Evaluation.State.NEW)
     course_types = CourseType.objects.filter(courses__evaluations__in=evaluations)
-    form = QuestionnairesAssignForm(
-        request.POST or None, course_types=course_types
-    )  # das erste is inital data, damit bei fehler die alten sachen da sind
+    form = QuestionnairesAssignForm(request.POST or None, course_types=course_types)
 
     general_fields = [field for field in form if field.name.startswith("general-")]
     contributor_fields = [field for field in form if field.name.startswith("contributor-")]
 
     if form.is_valid():
         for evaluation in evaluations:
-            if form.cleaned_data["general-" + evaluation.course.type.name]:
+            if form.cleaned_data["general-" + str(evaluation.course.type.id)]:
                 evaluation.general_contribution.questionnaires.set(
-                    form.cleaned_data["general-" + evaluation.course.type.name]
+                    form.cleaned_data["general-" + str(evaluation.course.type.id)]
                 )
-            if form.cleaned_data["contributor-" + evaluation.course.type.name]:
+            if form.cleaned_data["contributor-" + str(evaluation.course.type.id)]:
                 for contribution in evaluation.contributions.exclude(contributor=None):
-                    contribution.questionnaires.set(form.cleaned_data["contributor-" + evaluation.course.type.name])
+                    contribution.questionnaires.set(form.cleaned_data["contributor-" + str(evaluation.course.type.id)])
             evaluation.save()
 
         messages.success(request, _("Successfully assigned questionnaires."))
