@@ -904,51 +904,6 @@ class TestSemesterDeleteView(DeleteViewTestMixin, WebTestStaffMode):
         self.assertFalse(Semester.objects.filter(pk=self.instance.pk).exists())
 
 
-class TestSemesterAssignView(WebTestStaffMode):
-    @classmethod
-    def setUpTestData(cls):
-        cls.manager = make_manager()
-        cls.semester = baker.make(Semester)
-        cls.url = f"/staff/semester/{cls.semester.pk}/assign"
-
-        cls.lecture_type = baker.make(CourseType, name_de="Vorlesung", name_en="Lecture")
-        cls.seminar_type = baker.make(CourseType, name_de="Seminar", name_en="Seminar")
-        cls.questionnaire_general = baker.make(Questionnaire, type=Questionnaire.Type.TOP)
-        cls.questionnaire_contributor = baker.make(Questionnaire, type=Questionnaire.Type.CONTRIBUTOR)
-
-        evaluation1 = baker.make(Evaluation, course__type=cls.seminar_type, course__semester=cls.semester)
-        evaluation2 = baker.make(Evaluation, course__type=cls.lecture_type, course__semester=cls.semester)
-        baker.make(
-            Contribution,
-            contributor=baker.make(UserProfile),
-            evaluation=iter([evaluation1, evaluation2]),
-            role=Contribution.Role.EDITOR,
-            textanswer_visibility=Contribution.TextAnswerVisibility.GENERAL_TEXTANSWERS,
-            _fill_optional=["contributor"],
-            _quantity=2,
-            _bulk_create=True,
-        )
-
-    def test_assign_questionnaires(self) -> None:
-        page = self.app.get(self.url, user=self.manager)
-        assign_form = page.forms["questionnaire-assign-form"]
-        assign_form[f"general-{self.seminar_type.id}"] = [self.questionnaire_general.pk]
-        assign_form[f"contributor-{self.lecture_type.id}"] = [self.questionnaire_contributor.pk]
-        page = assign_form.submit().follow()
-
-        for evaluation in self.semester.evaluations.all():
-            if evaluation.course.type == self.seminar_type:
-                self.assertQuerySetEqual(
-                    evaluation.general_contribution.questionnaires.all(), [self.questionnaire_general]
-                )
-                for contribution in evaluation.contributions.exclude(contributor=None):  # contributions without general
-                    self.assertEqual(contribution.questionnaires.count(), 0)
-            if evaluation.course.type == self.lecture_type:
-                self.assertEqual(evaluation.general_contribution.questionnaires.count(), 0)
-                for contribution in evaluation.contributions.exclude(contributor=None):
-                    self.assertQuerySetEqual(contribution.questionnaires.all(), [self.questionnaire_contributor])
-
-
 class TestSemesterQuestionnaireAssignment(WebTestStaffMode):
     @classmethod
     def setUpTestData(cls):
